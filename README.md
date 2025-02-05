@@ -13,6 +13,8 @@ A NestJS-based E-Wallet API that allows users to create wallets, manage balances
 - [Error Handling](#error-handling)
 - [Development](#development)
 - [Testing](#testing)
+- [Contributing](#contributing)
+- [License](#license)
 
 ## Features
 
@@ -24,6 +26,8 @@ A NestJS-based E-Wallet API that allows users to create wallets, manage balances
 - 📝 Swagger API documentation
 - 🎯 Type-safe transaction handling
 - 🔄 Atomic transactions for balance operations
+- 💯 Decimal precision handling (2 decimal places)
+- 🧪 Comprehensive test coverage
 
 ## Tech Stack
 
@@ -33,6 +37,7 @@ A NestJS-based E-Wallet API that allows users to create wallets, manage balances
 - **API Documentation**: Swagger/OpenAPI
 - **Validation**: class-validator & class-transformer
 - **Type Safety**: TypeScript
+- **Testing**: Jest & Supertest
 
 ## Prerequisites
 
@@ -92,6 +97,12 @@ Once the application is running, visit `http://localhost:3000/api` to access the
 ```http
 POST /wallet
 Response: WalletResponseDto
+{
+  "id": "uuid",
+  "balance": 0.00,
+  "createdAt": "timestamp",
+  "updatedAt": "timestamp"
+}
 ```
 
 #### Top-up Wallet
@@ -116,6 +127,15 @@ Response: WalletResponseDto
 ```http
 GET /wallet/transactions/:id
 Response: TransactionResponseDto[]
+[
+  {
+    "id": "uuid",
+    "amount": number,
+    "type": "TOP_UP" | "CHARGE",
+    "userId": "uuid",
+    "createdAt": "timestamp"
+  }
+]
 ```
 
 ### Example Requests
@@ -177,12 +197,14 @@ The API includes comprehensive error handling for:
 - ❌ Non-existent wallet IDs
 - ❌ Invalid input validation
 - ❌ Invalid transaction types
+- ❌ Malformed JSON requests
+- ❌ Invalid UUID formats
 
 Error responses follow a consistent format:
 ```json
 {
   "statusCode": number,
-  "message": string,
+  "message": string | string[],
   "error": string
 }
 ```
@@ -218,16 +240,40 @@ npm run lint
 
 ## Testing
 
-```bash
-# Unit tests
-npm run test
+The project includes comprehensive end-to-end tests covering all API endpoints and edge cases:
 
-# e2e tests
+```bash
+# Run e2e tests
 npm run test:e2e
 
-# Test coverage
-npm run test:cov
+# Run e2e tests with coverage
+npm run test:e2e -- --coverage
 ```
+
+### Test Coverage
+
+The test suite covers:
+- ✅ All API endpoints
+- ✅ Success scenarios
+- ✅ Error scenarios
+- ✅ Edge cases
+- ✅ Data validation
+- ✅ Response formats
+- ✅ Transaction consistency
+- ✅ Balance calculations
+- ✅ Decimal precision handling
+- ✅ Database operations
+
+### Key Test Cases
+- Wallet creation and uniqueness
+- Balance operations (top-up, charge)
+- Transaction history and ordering
+- Input validation
+- Error handling
+- Decimal precision
+- UUID validation
+- JSON parsing
+- Database constraints
 
 ## Contributing
 
