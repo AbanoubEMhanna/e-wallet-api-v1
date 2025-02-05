@@ -26,15 +26,10 @@ model User {
 model Transaction {
   id        String   @id @default(uuid())
   amount    Float
-  type      TransactionType
+  type      String
   userId    String
   user      User     @relation(fields: [userId], references: [id])
   createdAt DateTime @default(now())
 
   @@map("transactions")
-}
-
-enum TransactionType {
-  TOP_UP
-  CHARGE
 }

@@ -1,6 +1,13 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { TopUpDto, ChargeDto } from './dto/wallet.dto';
+import { TopUpDto, ChargeDto, TransactionResponseDto } from './dto/wallet.dto';
+
+export const TransactionType = {
+  TOP_UP: 'TOP_UP',
+  CHARGE: 'CHARGE'
+} as const;
+
+type TransactionTypeValues = typeof TransactionType[keyof typeof TransactionType];
 
 @Injectable()
 export class WalletService {
@@ -35,7 +42,7 @@ export class WalletService {
       this.prisma.transaction.create({
         data: {
           amount: data.amount,
-          type: 'TOP_UP',
+          type: TransactionType.TOP_UP,
           userId: userId,
         },
       }),
@@ -69,7 +76,7 @@ export class WalletService {
       this.prisma.transaction.create({
         data: {
           amount: data.amount,
-          type: 'CHARGE',
+          type: TransactionType.CHARGE,
           userId: userId,
         },
       }),
@@ -78,7 +85,7 @@ export class WalletService {
     return updatedUser;
   }
 
-  async getTransactions(userId: string) {
+  async getTransactions(userId: string): Promise<TransactionResponseDto[]> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       include: {
@@ -94,6 +101,15 @@ export class WalletService {
       throw new NotFoundException('User not found');
     }
 
-    return user.transactions;
+    // Validate and transform the transaction type
+    return user.transactions.map(transaction => {
+      if (!Object.values(TransactionType).includes(transaction.type as TransactionTypeValues)) {
+        throw new Error(`Invalid transaction type: ${transaction.type}`);
+      }
+      return {
+        ...transaction,
+        type: transaction.type as TransactionTypeValues
+      };
+    });
   }
 } 
