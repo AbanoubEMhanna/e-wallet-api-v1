@@ -1,20 +1,44 @@
 # E-Wallet API
 
-A NestJS-based E-Wallet API that allows users to create wallets, manage balances through top-ups and charges, and view transaction history.
+A NestJS-based E-Wallet API that allows users to create wallets, manage balances through top-ups and charges, and view transaction history. Built with NestJS, Prisma ORM, and SQLite.
+
+## Table of Contents
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+- [Running the App](#running-the-app)
+- [API Documentation](#api-documentation)
+- [Database Schema](#database-schema)
+- [Error Handling](#error-handling)
+- [Development](#development)
+- [Testing](#testing)
 
 ## Features
 
-- Create wallet accounts
-- Top-up wallet balance
-- Charge (deduct) from wallet balance
-- View transaction history
-- Built-in validation and error handling
-- SQLite database with Prisma ORM
+- ✅ Create wallet accounts with zero initial balance
+- 💰 Top-up wallet balance with validation
+- 💳 Charge (deduct) from wallet with balance checks
+- 📜 View transaction history
+- 🔒 Built-in validation and error handling
+- 📝 Swagger API documentation
+- 🎯 Type-safe transaction handling
+- 🔄 Atomic transactions for balance operations
+
+## Tech Stack
+
+- **Framework**: NestJS v10
+- **Database**: SQLite
+- **ORM**: Prisma
+- **API Documentation**: Swagger/OpenAPI
+- **Validation**: class-validator & class-transformer
+- **Type Safety**: TypeScript
 
 ## Prerequisites
 
 - Node.js (v14 or later)
 - npm (v6 or later)
+- Git
 
 ## Installation
 
@@ -29,129 +53,190 @@ cd e-wallet-api
 npm install
 ```
 
-3. Set up the database:
+3. Set up environment variables:
 ```bash
+# Copy the example env file
+cp .env.example .env
+
+# The default SQLite configuration is:
+DATABASE_URL="file:./dev.db"
+```
+
+4. Set up the database:
+```bash
+# Generate Prisma client
+npx prisma generate
+
+# Run migrations
 npx prisma migrate dev --name init
 ```
 
-4. Start the application:
+## Running the App
+
 ```bash
-# development
+# Development mode with hot-reload
 npm run start:dev
 
-# production
+# Production mode
 npm run build
 npm run start:prod
 ```
 
-## API Endpoints
+## API Documentation
 
-### Create Wallet
-- **POST** `/wallet/create`
-- Creates a new wallet with 0.00 balance
-- Response: Wallet object with ID and balance
+Once the application is running, visit `http://localhost:3000/api` to access the Swagger documentation.
 
-### Top-up Wallet
-- **POST** `/wallet/topup/:id`
-- Add money to wallet
-- Request body:
-```json
-{
-  "amount": 100.00
+### API Endpoints
+
+#### Create Wallet
+```http
+POST /wallet
+Response: WalletResponseDto
+```
+
+#### Top-up Wallet
+```http
+POST /wallet/topup/:id
+Body: {
+  "amount": number // Positive number with up to 2 decimal places
+}
+Response: WalletResponseDto
+```
+
+#### Charge Wallet
+```http
+POST /wallet/charge/:id
+Body: {
+  "amount": number // Positive number with up to 2 decimal places
+}
+Response: WalletResponseDto
+```
+
+#### Get Transaction History
+```http
+GET /wallet/transactions/:id
+Response: TransactionResponseDto[]
+```
+
+### Example Requests
+
+#### Create a New Wallet
+```bash
+curl -X POST http://localhost:3000/wallet
+```
+
+#### Top-up Wallet
+```bash
+curl -X POST http://localhost:3000/wallet/topup/YOUR_WALLET_ID \
+  -H "Content-Type: application/json" \
+  -d '{"amount": 100.00}'
+```
+
+#### Charge Wallet
+```bash
+curl -X POST http://localhost:3000/wallet/charge/YOUR_WALLET_ID \
+  -H "Content-Type: application/json" \
+  -d '{"amount": 50.00}'
+```
+
+#### Get Transactions
+```bash
+curl http://localhost:3000/wallet/transactions/YOUR_WALLET_ID
+```
+
+## Database Schema
+
+### User Model
+```prisma
+model User {
+  id           String        @id @default(uuid())
+  balance      Float         @default(0.00)
+  transactions Transaction[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 }
 ```
-- Response: Updated wallet object
 
-### Charge Wallet
-- **POST** `/wallet/charge/:id`
-- Deduct money from wallet
-- Request body:
-```json
-{
-  "amount": 50.00
+### Transaction Model
+```prisma
+model Transaction {
+  id        String   @id @default(uuid())
+  amount    Float
+  type      String   // 'TOP_UP' or 'CHARGE'
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
 }
 ```
-- Response: Updated wallet object
-
-### Get Transaction History
-- **GET** `/wallet/transactions/:id`
-- Get all transactions for a wallet
-- Response: Array of transactions
 
 ## Error Handling
 
-The API includes proper error handling for:
-- Invalid amounts (negative or zero)
-- Insufficient balance for charges
-- Non-existent wallet IDs
-- Invalid input validation
+The API includes comprehensive error handling for:
+- ❌ Invalid amounts (negative or zero)
+- ❌ Insufficient balance for charges
+- ❌ Non-existent wallet IDs
+- ❌ Invalid input validation
+- ❌ Invalid transaction types
+
+Error responses follow a consistent format:
+```json
+{
+  "statusCode": number,
+  "message": string,
+  "error": string
+}
+```
 
 ## Development
 
-### Database Migrations
+### Database Management
 
-To create a new migration after schema changes:
 ```bash
-npx prisma migrate dev --name <migration-name>
+# Generate Prisma client after schema changes
+npx prisma generate
+
+# Create a new migration
+npx prisma migrate dev --name your_migration_name
+
+# Reset database (caution: deletes all data)
+npx prisma migrate reset
+
+# View database in Prisma Studio
+npx prisma studio
 ```
 
 ### Code Style
 
-The project uses ESLint and Prettier for code formatting. Run:
+The project uses ESLint and Prettier for code formatting:
 ```bash
+# Format code
 npm run format
+
+# Lint code
 npm run lint
 ```
 
 ## Testing
 
 ```bash
-# unit tests
+# Unit tests
 npm run test
 
 # e2e tests
 npm run test:e2e
 
-# test coverage
+# Test coverage
 npm run test:cov
 ```
 
-## Deployment
+## Contributing
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ npm install -g mau
-$ mau deploy
-```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ## License
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

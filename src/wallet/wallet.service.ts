@@ -13,6 +13,10 @@ type TransactionTypeValues = typeof TransactionType[keyof typeof TransactionType
 export class WalletService {
   constructor(private prisma: PrismaService) {}
 
+  private roundAmount(amount: number): number {
+    return Math.round(amount * 100) / 100;
+  }
+
   async createWallet() {
     return this.prisma.user.create({
       data: {
@@ -30,25 +34,30 @@ export class WalletService {
       throw new NotFoundException('User not found');
     }
 
+    const roundedAmount = this.roundAmount(data.amount);
+
     const [updatedUser] = await this.prisma.$transaction([
       this.prisma.user.update({
         where: { id: userId },
         data: {
           balance: {
-            increment: data.amount,
+            increment: roundedAmount,
           },
         },
       }),
       this.prisma.transaction.create({
         data: {
-          amount: data.amount,
+          amount: roundedAmount,
           type: TransactionType.TOP_UP,
           userId: userId,
         },
       }),
     ]);
 
-    return updatedUser;
+    return {
+      ...updatedUser,
+      balance: this.roundAmount(updatedUser.balance),
+    };
   }
 
   async charge(userId: string, data: ChargeDto) {
@@ -60,7 +69,9 @@ export class WalletService {
       throw new NotFoundException('User not found');
     }
 
-    if (user.balance < data.amount) {
+    const roundedAmount = this.roundAmount(data.amount);
+
+    if (user.balance < roundedAmount) {
       throw new BadRequestException('Insufficient balance');
     }
 
@@ -69,20 +80,23 @@ export class WalletService {
         where: { id: userId },
         data: {
           balance: {
-            decrement: data.amount,
+            decrement: roundedAmount,
           },
         },
       }),
       this.prisma.transaction.create({
         data: {
-          amount: data.amount,
+          amount: roundedAmount,
           type: TransactionType.CHARGE,
           userId: userId,
         },
       }),
     ]);
 
-    return updatedUser;
+    return {
+      ...updatedUser,
+      balance: this.roundAmount(updatedUser.balance),
+    };
   }
 
   async getTransactions(userId: string): Promise<TransactionResponseDto[]> {
@@ -101,15 +115,10 @@ export class WalletService {
       throw new NotFoundException('User not found');
     }
 
-    // Validate and transform the transaction type
-    return user.transactions.map(transaction => {
-      if (!Object.values(TransactionType).includes(transaction.type as TransactionTypeValues)) {
-        throw new Error(`Invalid transaction type: ${transaction.type}`);
-      }
-      return {
-        ...transaction,
-        type: transaction.type as TransactionTypeValues
-      };
-    });
+    return user.transactions.map(transaction => ({
+      ...transaction,
+      amount: this.roundAmount(transaction.amount),
+      type: transaction.type as TransactionTypeValues
+    }));
   }
 } 
